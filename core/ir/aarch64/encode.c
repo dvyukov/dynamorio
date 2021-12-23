@@ -115,13 +115,71 @@ const reg_id_t dr_reg_fixer[] = { REG_NULL,
                                   DR_REG_FPCR,
                                   DR_REG_FPSR,
                                   DR_REG_TPIDR_EL0,
-                                  DR_REG_TPIDRRO_EL0 };
+                                  DR_REG_TPIDRRO_EL0,
+
+
+    DR_REG_Z0,
+    DR_REG_Z1,
+    DR_REG_Z2,
+    DR_REG_Z3,
+    DR_REG_Z4,
+    DR_REG_Z5,
+    DR_REG_Z6,
+    DR_REG_Z7,
+    DR_REG_Z8,
+    DR_REG_Z9,
+    DR_REG_Z10,
+    DR_REG_Z11,
+    DR_REG_Z12,
+    DR_REG_Z13,
+    DR_REG_Z14,
+    DR_REG_Z15,
+    DR_REG_Z16,
+    DR_REG_Z17,
+    DR_REG_Z18,
+    DR_REG_Z19,
+    DR_REG_Z20,
+    DR_REG_Z21,
+    DR_REG_Z22,
+    DR_REG_Z23,
+    DR_REG_Z24,
+    DR_REG_Z25,
+    DR_REG_Z26,
+    DR_REG_Z27,
+    DR_REG_Z28,
+    DR_REG_Z29,
+    DR_REG_Z30,
+    DR_REG_Z31,
+
+    DR_REG_P0,
+    DR_REG_P1,
+    DR_REG_P2,
+    DR_REG_P3,
+    DR_REG_P4,
+    DR_REG_P5,
+    DR_REG_P6,
+    DR_REG_P7,
+    DR_REG_P8,
+    DR_REG_P9,
+    DR_REG_P10,
+    DR_REG_P11,
+    DR_REG_P12,
+    DR_REG_P13,
+    DR_REG_P14,
+    DR_REG_P15,
+
+    DR_REG_CNTVCT_EL0,
+};
 
 #ifdef DEBUG
 void
 encode_debug_checks(void)
 {
     /* FIXME i#1569: NYI */
+    CLIENT_ASSERT(sizeof(reg_names) / sizeof(reg_names[0]) == DR_REG_LAST_ENUM,
+                  "reg_names missing an entry");
+    CLIENT_ASSERT(sizeof(dr_reg_fixer) / sizeof(dr_reg_fixer[0]) == DR_REG_LAST_ENUM,
+                  "dr_reg_fixer missing an entry");
 }
 #endif
 
