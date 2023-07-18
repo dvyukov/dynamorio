@@ -2054,19 +2054,24 @@ static bool
 instr_zeroes_high(instr_t *instr, bool zmm)
 {
     int i;
-    /* Our use of get_encoding_info() with no final PC specified works
-     * as there are no encoding template choices involving reachability
-     * which affect whether ymmh is zeroed.
-     */
-    const instr_info_t *info = get_encoding_info(instr);
-    if (info == NULL)
-        return false;
-    /* Legacy (SSE) instructions always preserve top half of YMM.
-     * Moreover, EVEX encoded instructions clear upper ZMM bits, but also
-     * YMM bits if an XMM reg is used.
-     */
-    if (!TEST(REQUIRES_VEX, info->flags) && !TEST(REQUIRES_EVEX, info->flags))
-        return false;
+    if (instr_raw_bits_valid(instr)) {
+        if (!instr_get_prefix_flag(instr, PREFIX_VEX | PREFIX_EVEX))
+            return false;
+    } else {
+        /* Our use of get_encoding_info() with no final PC specified works
+         * as there are no encoding template choices involving reachability
+         * which affect whether ymmh is zeroed.
+         */
+        const instr_info_t *info = get_encoding_info(instr);
+        if (info == NULL)
+            return false;
+        /* Legacy (SSE) instructions always preserve top half of YMM.
+         * Moreover, EVEX encoded instructions clear upper ZMM bits, but also
+         * YMM bits if an XMM reg is used.
+         */
+        if (!TEST(REQUIRES_VEX, info->flags) && !TEST(REQUIRES_EVEX, info->flags))
+            return false;
+    }
 
     /* Handle zeroall/vzeroupper special case. */
     if (instr->opcode == OP_vzeroall || (zmm && instr->opcode == OP_vzeroupper))
