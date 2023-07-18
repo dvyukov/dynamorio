@@ -458,6 +458,7 @@ instr_being_modified(instr_t *instr, bool raw_bits_valid)
     }
     /* PR 214962: if client changes our mangling, un-mark to avoid bad translation */
     instr_set_our_mangling(instr, false);
+    instr_reset_extra_flags(instr, INSTR_DECODED_VEX_EVEX_VALID);
 }
 
 void
@@ -1298,6 +1299,24 @@ instr_has_encoding_hint(instr_t *instr, dr_encoding_hint_type_t hint)
     return TEST(hint, instr->encoding_hints);
 }
 
+void
+instr_set_extra_flags(instr_t *instr, dr_extra_instr_flags_t flags)
+{
+    instr->encoding_hints |= flags;
+}
+
+void
+instr_reset_extra_flags(instr_t *instr, dr_extra_instr_flags_t flags)
+{
+    instr->encoding_hints &= ~flags;
+}
+
+bool
+instr_has_extra_flags(instr_t *instr, dr_extra_instr_flags_t flags)
+{
+    return TEST(flags, instr->encoding_hints);
+}
+
 /***********************************************************************/
 /* decoding routines */
 
@@ -2054,19 +2073,24 @@ static bool
 instr_zeroes_high(instr_t *instr, bool zmm)
 {
     int i;
-    /* Our use of get_encoding_info() with no final PC specified works
-     * as there are no encoding template choices involving reachability
-     * which affect whether ymmh is zeroed.
-     */
-    const instr_info_t *info = get_encoding_info(instr);
-    if (info == NULL)
-        return false;
-    /* Legacy (SSE) instructions always preserve top half of YMM.
-     * Moreover, EVEX encoded instructions clear upper ZMM bits, but also
-     * YMM bits if an XMM reg is used.
-     */
-    if (!TEST(REQUIRES_VEX, info->flags) && !TEST(REQUIRES_EVEX, info->flags))
-        return false;
+    if (instr_has_extra_flags(instr, INSTR_DECODED_VEX_EVEX_VALID)) {
+        if (!instr_has_extra_flags(instr, INSTR_DECODED_VEX_EVEX))
+            return false;
+    } else {
+        /* Our use of get_encoding_info() with no final PC specified works
+         * as there are no encoding template choices involving reachability
+         * which affect whether ymmh is zeroed.
+         */
+        const instr_info_t *info = get_encoding_info(instr);
+        if (info == NULL)
+            return false;
+        /* Legacy (SSE) instructions always preserve top half of YMM.
+         * Moreover, EVEX encoded instructions clear upper ZMM bits, but also
+         * YMM bits if an XMM reg is used.
+         */
+        if (!TEST(REQUIRES_VEX, info->flags) && !TEST(REQUIRES_EVEX, info->flags))
+            return false;
+    }
 
     /* Handle zeroall/vzeroupper special case. */
     if (instr->opcode == OP_vzeroall || (zmm && instr->opcode == OP_vzeroupper))

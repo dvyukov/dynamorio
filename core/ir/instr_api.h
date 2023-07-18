@@ -195,6 +195,7 @@ typedef enum _dr_pred_type_t {
  * used to encode an instruction in its evex form instead of its vex format (xref #3339).
  */
 typedef enum _dr_encoding_hint_type_t {
+    /* Implementation note: the values must not overlap with dr_extra_instr_flags_t. */
     DR_ENCODING_HINT_NONE = 0x0, /**< No encoding hint is present. */
 #ifdef X86
     DR_ENCODING_HINT_X86_EVEX = 0x1, /**< x86: Encode in EVEX form if available. */
@@ -268,10 +269,12 @@ typedef enum _dr_opnd_query_flags_t {
  * compatibility is desired, do not use the fast IR feature.
  */
 struct _instr_t {
-    /* flags contains the constants defined above */
+    /* flags contains the INSTR_* constants */
     uint flags;
 
-    /* hints for encoding this instr in a specific way, holds dr_encoding_hint_type_t */
+    /* Hints for encoding this instr in a specific way, holds dr_encoding_hint_type_t.
+     * Implementation detail: also contains non-public dr_extra_instr_flags_t values.
+     */
     uint encoding_hints;
 
     /* Raw bits of length length are pointed to by the bytes field.

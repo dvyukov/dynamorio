@@ -217,6 +217,18 @@ enum {
     INSTR_OUR_MANGLING = 0x80000000,
 };
 
+/* These are logically continuation of the above flags but are stored in
+ * instr_t::encoding_hints since we run out of bits in instr_t::flags.
+ * The values must not overlap with dr_encoding_hint_type_t so we start
+ * from the upper bits.
+ */
+typedef enum _dr_extra_instr_flags_t {
+    /* INSTR_DECODED_VEX_EVEX flag value is valid. */
+    INSTR_DECODED_VEX_EVEX_VALID = 0x80000000,
+    /* The instruction was decoded with VEX/EVEX prefix. */
+    INSTR_DECODED_VEX_EVEX = 0x40000000,
+} dr_extra_instr_flags_t;
+
 #define DR_TUPLE_TYPE_BITS 4
 #define DR_TUPLE_TYPE_BITPOS (32 - DR_TUPLE_TYPE_BITS)
 
@@ -762,6 +774,13 @@ instr_create_restore_from_reg(dcontext_t *dcontext, reg_id_t reg1, reg_id_t reg2
 byte *
 instr_raw_is_rip_rel_lea(byte *pc, byte *read_end);
 #endif
+
+void
+instr_set_extra_flags(instr_t *instr, dr_extra_instr_flags_t flags);
+void
+instr_reset_extra_flags(instr_t *instr, dr_extra_instr_flags_t flags);
+bool
+instr_has_extra_flags(instr_t *instr, dr_extra_instr_flags_t flags);
 
 /* even on x64, displacements are 32 bits, so we keep the "int" type and 4-byte size
  */

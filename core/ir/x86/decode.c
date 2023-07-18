@@ -2613,6 +2613,9 @@ decode_common(dcontext_t *dcontext, byte *pc, byte *orig_pc, instr_t *instr)
         instr->prefixes |= PREFIX_SEG_FS;
     if (di.seg_override == SEG_GS)
         instr->prefixes |= PREFIX_SEG_GS;
+    instr_set_extra_flags(instr, INSTR_DECODED_VEX_EVEX_VALID);
+    if (di.vex_encoded || di.evex_encoded)
+        instr_set_extra_flags(instr, INSTR_DECODED_VEX_EVEX);
 
     /* now copy operands into their real slots */
     instr_set_num_opnds(dcontext, instr, instr_num_dsts, instr_num_srcs);
