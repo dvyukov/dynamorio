@@ -2050,61 +2050,75 @@ instr_writes_memory(instr_t *instr)
 
 #ifdef X86
 
-bool
-instr_zeroes_ymmh(instr_t *instr)
+static bool
+instr_zeroes_high(instr_t *instr, bool zmm)
 {
     int i;
-    /* Our use of get_encoding_info() with no final PC specified works
-     * as there are no encoding template choices involving reachability
-     * which affect whether ymmh is zeroed.
-     */
-    const instr_info_t *info = get_encoding_info(instr);
-    if (info == NULL)
-        return false;
-    /* Legacy (SSE) instructions always preserve top half of YMM.
-     * Moreover, EVEX encoded instructions clear upper ZMM bits, but also
-     * YMM bits if an XMM reg is used.
-     */
-    if (!TEST(REQUIRES_VEX, info->flags) && !TEST(REQUIRES_EVEX, info->flags))
-        return false;
+    bool has_xmm_dst;
+    bool vex_evex;
+    int num_prefixes;
+    uint rip_rel_pos;
+    byte *bits;
 
-    /* Handle zeroall special case. */
-    if (instr->opcode == OP_vzeroall)
+    /* Handle zeroall/vzeroupper special case. */
+    if (instr->opcode == OP_vzeroall || (zmm && instr->opcode == OP_vzeroupper))
         return true;
 
+    has_xmm_dst = false;
     for (i = 0; i < instr_num_dsts(instr); i++) {
         opnd_t opnd = instr_get_dst(instr, i);
         if (opnd_is_reg(opnd) && reg_is_vector_simd(opnd_get_reg(opnd)) &&
-            reg_is_strictly_xmm(opnd_get_reg(opnd)))
-            return true;
+            (reg_is_strictly_xmm(opnd_get_reg(opnd)) ||
+             reg_is_strictly_ymm(opnd_get_reg(opnd)))) {
+            has_xmm_dst = true;
+            break;
+        }
     }
-    return false;
+    if (!has_xmm_dst)
+        return false;
+
+    if (instr_raw_bits_valid(instr)) {
+        /* If we have raw bits, then look at them instead of iterating
+         * over all encodings because it's much faster.
+         */
+        vex_evex = false;
+        num_prefixes = 0;
+        bits = instr_get_raw_bits(instr);
+        decode_sizeof(GLOBAL_DCONTEXT, bits, &num_prefixes, &rip_rel_pos);
+        for (i = 0; i < num_prefixes; i++) {
+            vex_evex |= bits[i] == VEX_2BYTE_PREFIX_OPCODE ||
+                bits[i] == VEX_3BYTE_PREFIX_OPCODE || bits[i] == EVEX_PREFIX_OPCODE;
+        }
+        if (!vex_evex)
+            return false;
+    } else {
+        /* Our use of get_encoding_info() with no final PC specified works
+         * as there are no encoding template choices involving reachability
+         * which affect whether ymmh is zeroed.
+         */
+        const instr_info_t *info = get_encoding_info(instr);
+        if (info == NULL)
+            return false;
+        /* Legacy (SSE) instructions always preserve top half of YMM.
+         * Moreover, EVEX encoded instructions clear upper ZMM bits, but also
+         * YMM bits if an XMM reg is used.
+         */
+        if (!TEST(REQUIRES_VEX, info->flags) && !TEST(REQUIRES_EVEX, info->flags))
+            return false;
+    }
+    return true;
+}
+
+bool
+instr_zeroes_ymmh(instr_t *instr)
+{
+    return instr_zeroes_high(instr, false);
 }
 
 bool
 instr_zeroes_zmmh(instr_t *instr)
 {
-    int i;
-    const instr_info_t *info = get_encoding_info(instr);
-    if (info == NULL)
-        return false;
-    if (!TEST(REQUIRES_VEX, info->flags) && !TEST(REQUIRES_EVEX, info->flags))
-        return false;
-    /* Handle special cases, namely zeroupper and zeroall. */
-    /* XXX: DR ir should actually have these two instructions have all SIMD vector regs
-     * as operand even though they are implicit.
-     */
-    if (instr->opcode == OP_vzeroall || instr->opcode == OP_vzeroupper)
-        return true;
-
-    for (i = 0; i < instr_num_dsts(instr); i++) {
-        opnd_t opnd = instr_get_dst(instr, i);
-        if (opnd_is_reg(opnd) && reg_is_vector_simd(opnd_get_reg(opnd)) &&
-            (reg_is_strictly_xmm(opnd_get_reg(opnd)) ||
-             reg_is_strictly_ymm(opnd_get_reg(opnd))))
-            return true;
-    }
-    return false;
+    return instr_zeroes_high(instr, true);
 }
 
 bool
